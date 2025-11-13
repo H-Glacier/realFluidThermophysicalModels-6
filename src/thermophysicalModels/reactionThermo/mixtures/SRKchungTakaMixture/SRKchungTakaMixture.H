@@ -49,6 +49,7 @@ SourceFiles
 
 #include "basicSpecieMixture.H"
 #include "HashPtrTable.H"
+#include "boolField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -137,7 +138,18 @@ protected:
         List<scalar> ListTc_;
         List<scalar> ListPc_;
         List<List<scalar>> MMD_;
-        List<List<scalar>> SIGMD_;
+         List<List<scalar>> SIGMD_;
+         //- end
+
+        //- Storage for compressibility-factor history (cells)
+        mutable scalarField cellLastZ_;
+        mutable boolField cellLastZValid_;
+
+        //- Storage for boundary faces
+        mutable List<scalarField> patchLastZ_;
+        mutable List<boolField> patchLastZValid_;
+
+        //- end
 
 public:
 

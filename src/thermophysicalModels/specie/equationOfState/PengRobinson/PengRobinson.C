@@ -43,7 +43,20 @@ inline Foam::PengRobinson<Specie>::PengRobinson
     b_(b_),
     coef1_(coef1_),
     coef2_(coef2_),
-    coef3_(coef3_)
+    coef3_(coef3_),
+    mixingB_(nullptr),
+    mixingCoef1_(nullptr),
+    mixingCoef2_(nullptr),
+    mixingCoef3_(nullptr),
+    mixtureX_(),
+    aMixWork_(),
+    lastZPtr_(nullptr),
+    lastZValidPtr_(nullptr),
+    cachedP_(0),
+    cachedT_(0),
+    cachedZ_(0),
+    hasCachedZ_(false),
+    hasMixtureState_(false)
 {}
 
 
@@ -67,6 +80,20 @@ Foam::PengRobinson<Specie>::PengRobinson
     coef2_ = 2*a*S*(1+S)/sqrt(this->Tc_);
 
     coef3_ = a*sqr(S)/this->Tc_;
+
+    mixingB_ = nullptr;
+    mixingCoef1_ = nullptr;
+    mixingCoef2_ = nullptr;
+    mixingCoef3_ = nullptr;
+    mixtureX_.clear();
+    aMixWork_.clear();
+    lastZPtr_ = nullptr;
+    lastZValidPtr_ = nullptr;
+    cachedP_ = 0;
+    cachedT_ = 0;
+    cachedZ_ = 0;
+    hasCachedZ_ = false;
+    hasMixtureState_ = false;
 }
 
 
@@ -82,7 +109,20 @@ inline Foam::PengRobinson<Specie>::PengRobinson
     b_(srk.b_),
     coef1_(srk.coef1_),
     coef2_(srk.coef2_),
-    coef3_(srk.coef3_)
+    coef3_(srk.coef3_),
+    mixingB_(srk.mixingB_),
+    mixingCoef1_(srk.mixingCoef1_),
+    mixingCoef2_(srk.mixingCoef2_),
+    mixingCoef3_(srk.mixingCoef3_),
+    mixtureX_(srk.mixtureX_),
+    aMixWork_(srk.aMixWork_),
+    lastZPtr_(nullptr),
+    lastZValidPtr_(nullptr),
+    cachedP_(srk.cachedP_),
+    cachedT_(srk.cachedT_),
+    cachedZ_(srk.cachedZ_),
+    hasCachedZ_(srk.hasCachedZ_),
+    hasMixtureState_(srk.hasMixtureState_)
 {}
 
 
