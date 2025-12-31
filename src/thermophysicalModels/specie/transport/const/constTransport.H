@@ -144,6 +144,12 @@ public:
         {
             return 1.0;
         }
+
+        //- Return number of roots
+        inline label nRoots(const scalar p, const scalar T) const
+        {
+            return Thermo::nRoots(p, T);
+        }
         //
 
     // Member operators

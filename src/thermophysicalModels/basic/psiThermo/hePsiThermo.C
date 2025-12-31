@@ -185,7 +185,7 @@ Foam::hePsiThermo<BasicPsiThermo, MixtureType>::hePsiThermo
             IOobject::AUTO_WRITE
         ),
         mesh,
-        dimensionedScalar("multiRoots", dimless, 1)
+        dimensionedScalar("multiRoots", dimensionSet(0,0,0,0,0,0,0), 1)
     )
 {
     //

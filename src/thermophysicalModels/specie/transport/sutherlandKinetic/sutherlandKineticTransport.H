@@ -221,6 +221,12 @@ public:
         // Species diffusivity using Kinetic model for binary diffusion coefficients
         inline scalar Dimix(label speciei, const scalar p, const scalar T) const;
 
+        //- Return number of roots
+        inline label nRoots(const scalar p, const scalar T) const
+        {
+            return Thermo::nRoots(p, T);
+        }
+
         //- Update coefficients for mixture transport properties
         inline void updateTRANS
         (
