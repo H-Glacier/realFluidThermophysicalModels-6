@@ -190,6 +190,37 @@ inline Foam::scalar Foam::PengRobinson<Specie>::Z
 
 
 template<class Specie>
+inline Foam::label Foam::PengRobinson<Specie>::nRoots
+(
+    scalar p,
+    scalar T
+) const
+{
+    const scalar aAlpha = coef1_ - coef2_*sqrt(T) + coef3_*T;
+
+    const scalar A = aAlpha*p/sqr(RR*T);
+    const scalar B = b_*p/(RR*T);
+
+    const scalar a2 = - (1.0 - B);
+    const scalar a1 = A - 2*B - 3*sqr(B);
+    const scalar a0 = -(A*B - sqr(B) - pow(B, 3.0));
+
+    const scalar Q = (3*a1 - a2*a2)/9.0;
+    const scalar Rl = (9*a2*a1 - 27*a0 - 2*a2*a2*a2)/54.0;
+
+    const scalar Q3 = Q*Q*Q;
+    const scalar D = Q3 + Rl*Rl;
+
+    if (D <= 0)
+    {
+        return 3;
+    }
+    
+    return 1;
+}
+
+
+template<class Specie>
 inline Foam::scalar Foam::PengRobinson<Specie>::CpMCv
 (
     scalar p,
