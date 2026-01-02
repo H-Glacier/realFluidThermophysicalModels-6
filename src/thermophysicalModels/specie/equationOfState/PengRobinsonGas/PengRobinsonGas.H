@@ -170,10 +170,6 @@ public:
             //- Return compression factor []
             inline scalar Z(scalar p, scalar T) const;
 
-            //- True if the cubic EOS has multiple real Z-roots for (p,T)
-            //  (i.e. the implementation will force-select the maximum root).
-            inline bool hasMultipleZRoots(scalar p, scalar T) const;
-
             //- Return (Cp - Cv) [J/(kg K]
             inline scalar CpMCv(scalar p, scalar T) const;
 
