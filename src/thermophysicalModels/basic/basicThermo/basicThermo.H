@@ -467,6 +467,18 @@ public:
 
         //- Read thermophysical properties dictionary
         virtual bool read();
+
+
+        // Diagnostics (real-gas cubic EOS)
+
+            //- Flag cells where the EOS had multiple real Z-roots and the
+            //  implementation force-selects the maximum root.
+            //  Default: returns all zeros (EOS without multi-root behaviour).
+            virtual tmp<volScalarField> forcedMaxRootCells() const;
+
+            //- Number of cells with multiple real Z-roots (global sum in
+            //  parallel). Default: 0.
+            virtual label nForcedMaxRootCells() const;
 };
 
 

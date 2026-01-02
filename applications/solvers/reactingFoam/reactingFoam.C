@@ -114,6 +114,10 @@ int main(int argc, char *argv[])
 
         rho = thermo.rho();
 
+        forcedMaxRootCells = thermo.forcedMaxRootCells();
+        Info<< "Cells with multiple EOS roots (forced max root) = "
+            << thermo.nForcedMaxRootCells() << nl << endl;
+
         runTime.write();
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
