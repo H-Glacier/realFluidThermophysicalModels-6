@@ -37,6 +37,7 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculate()
     scalarField& psiCells = this->psi_.primitiveFieldRef();
     scalarField& muCells = this->mu_.primitiveFieldRef();
     scalarField& alphaCells = this->alpha_.primitiveFieldRef();
+    scalarField& multiRootsCells = this->multiRoots_.primitiveFieldRef();
 
 //    const PtrList<typename MixtureType::thermoType>& speciesData_ = this->speciesData(); //
 
@@ -56,6 +57,7 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculate()
 
         muCells[celli] = mixture_.mu(pCells[celli], TCells[celli]);
         alphaCells[celli] = mixture_.alphah(pCells[celli], TCells[celli]);
+        multiRootsCells[celli] = mixture_.nRoots(pCells[celli], TCells[celli]);
 
         //
         forAll(Dimix_, i)
@@ -64,6 +66,20 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculate()
           = mixture_.Dimix(i, pCells[celli], TCells[celli]);
         }
         //
+    }
+
+    label nMulti = 0;
+    forAll(multiRootsCells, celli)
+    {
+        if (multiRootsCells[celli] > 1.5)
+        {
+            nMulti++;
+        }
+    }
+    reduce(nMulti, sumOp<label>());
+    if (nMulti > 0)
+    {
+        Info<< "Phase " << this->phaseName_ << " : cells with multiple roots = " << nMulti << endl;
     }
 
     volScalarField::Boundary& pBf =
@@ -84,6 +100,9 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculate()
     volScalarField::Boundary& alphaBf =
         this->alpha_.boundaryFieldRef();
 
+    volScalarField::Boundary& multiRootsBf =
+        this->multiRoots_.boundaryFieldRef();
+
     forAll(this->T_.boundaryField(), patchi)
     {
         fvPatchScalarField& pp = pBf[patchi];
@@ -92,6 +111,7 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculate()
         fvPatchScalarField& phe = heBf[patchi];
         fvPatchScalarField& pmu = muBf[patchi];
         fvPatchScalarField& palpha = alphaBf[patchi];
+        fvPatchScalarField& pMultiRoots = multiRootsBf[patchi];
 
         if (pT.fixesValue())
         {
@@ -105,6 +125,7 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculate()
                 ppsi[facei] = mixture_.psi(pp[facei], pT[facei]);
                 pmu[facei] = mixture_.mu(pp[facei], pT[facei]);
                 palpha[facei] = mixture_.alphah(pp[facei], pT[facei]);
+                pMultiRoots[facei] = mixture_.nRoots(pp[facei], pT[facei]);
 
                 //
                 forAll(Dimix_, i)
@@ -127,6 +148,7 @@ void Foam::hePsiThermo<BasicPsiThermo, MixtureType>::calculate()
                 ppsi[facei] = mixture_.psi(pp[facei], pT[facei]);
                 pmu[facei] = mixture_.mu(pp[facei], pT[facei]);
                 palpha[facei] = mixture_.alphah(pp[facei], pT[facei]);
+                pMultiRoots[facei] = mixture_.nRoots(pp[facei], pT[facei]);
 
                 //
                 forAll(Dimix_, i)
@@ -151,7 +173,20 @@ Foam::hePsiThermo<BasicPsiThermo, MixtureType>::hePsiThermo
 )
 :
     heThermo<BasicPsiThermo, MixtureType>(mesh, phaseName),
-    Dimix_(MixtureType::numberOfSpecies()) //
+    Dimix_(MixtureType::numberOfSpecies()), //
+    multiRoots_
+    (
+        IOobject
+        (
+            this->phasePropertyName("multiRoots"),
+            mesh.time().timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("multiRoots", dimensionSet(0,0,0,0,0,0,0), 1)
+    )
 {
     //
     forAll(Dimix_, i)

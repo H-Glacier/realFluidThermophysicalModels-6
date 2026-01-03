@@ -261,6 +261,40 @@ inline Foam::scalar Foam::PengRobinsonGas<Specie>::Z
 
 
 template<class Specie>
+inline Foam::label Foam::PengRobinsonGas<Specie>::nRoots
+(
+    scalar p,
+    scalar T
+) const
+{
+    const scalar Tr = T/Tc_;
+    const scalar a = 0.45724*sqr(RR*Tc_)/Pc_;
+    const scalar b = 0.07780*RR*Tc_/Pc_;
+    const scalar kappa = 0.37464 + 1.54226*omega_ - 0.26992*sqr(omega_);
+    const scalar alpha = sqr(1 + kappa*(1 - sqrt(Tr)));
+
+    const scalar A = a*alpha*p/sqr(RR*T);
+    const scalar B = b*p/(RR*T);
+
+    const scalar a2 = B - 1;
+    const scalar a1 = A - 2*B - 3*sqr(B);
+    const scalar a0 = -A*B + sqr(B) + pow3(B);
+
+    const scalar Q = (3*a1 - a2*a2)/9.0;
+    const scalar Rl = (9*a2*a1 - 27*a0 - 2*a2*a2*a2)/54.0;
+
+    const scalar Q3 = Q*Q*Q;
+    const scalar D = Q3 + Rl*Rl;
+
+    if (D <= 0)
+    {
+        return 3;
+    }
+    return 1;
+}
+
+
+template<class Specie>
 inline Foam::scalar Foam::PengRobinsonGas<Specie>::CpMCv
 (
     scalar p,

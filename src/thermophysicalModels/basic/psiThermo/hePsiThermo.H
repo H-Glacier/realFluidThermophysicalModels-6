@@ -57,6 +57,9 @@ class hePsiThermo
        //- Store list of mass diffusion coefficients
        PtrList<volScalarField> Dimix_; //
 
+       //- Field to store number of roots (multi-root check)
+       volScalarField multiRoots_;
+
 
 
     // Private Member Functions
@@ -103,6 +106,12 @@ public:
         virtual tmp<scalarField> Dimix(const label speciei, const label patchi) const
         {
             return Dimix_[speciei].boundaryField()[patchi];
+        }
+
+        //- Return number of roots field
+        virtual const volScalarField& multiRoots() const
+        {
+            return multiRoots_;
         }
         //
 

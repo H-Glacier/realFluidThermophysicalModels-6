@@ -206,6 +206,18 @@ public:
             //- Temperature derivative of heat capacity at constant pressure
             inline scalar dCpdT(const scalar p, const scalar T) const;
 
+            //- Return number of roots (1 or 3)
+            inline label nRoots(scalar p, scalar T) const
+            {
+                return this->EquationOfState::nRoots(p, T);
+            }
+
+            //- Return number of roots (1 or 3)
+            inline label nRoots(scalar p, scalar T) const
+            {
+                return this->EquationOfState::nRoots(p, T);
+            }
+
 
         // I-O
 

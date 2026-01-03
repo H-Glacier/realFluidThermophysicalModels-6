@@ -110,6 +110,13 @@ inline Foam::scalar Foam::perfectGas<Specie>::Z(scalar p, scalar T) const
 
 
 template<class Specie>
+inline Foam::label Foam::perfectGas<Specie>::nRoots(scalar p, scalar T) const
+{
+    return 1;
+}
+
+
+template<class Specie>
 inline Foam::scalar Foam::perfectGas<Specie>::CpMCv(scalar p, scalar T) const
 {
     return this->R();

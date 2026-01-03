@@ -141,6 +141,9 @@ public:
             //- Return compression factor []
             inline scalar Z(scalar p, scalar T) const;
 
+            //- Return number of roots (1 or 3)
+            inline label nRoots(scalar p, scalar T) const;
+
             //- Return (Cp - Cv) [J/(kg K]
             inline scalar CpMCv(scalar p, scalar T) const;
 
