@@ -31,6 +31,21 @@ volScalarField rho
     thermo.rho()
 );
 
+// Flag cells where cubic EOS has multiple Z-roots and max-root is forced
+volScalarField forcedMaxRootCells
+(
+    IOobject
+    (
+        "forcedMaxRootCells",
+        runTime.timeName(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("zero", dimless, 0.0)
+);
+
 //- Creates Molecular weight field [kg/kmol] 
 Info<< "Creating field molecular weight - W \n" << endl;
 volScalarField Wmix

@@ -526,4 +526,34 @@ bool Foam::basicThermo::read()
 }
 
 
+Foam::tmp<Foam::volScalarField> Foam::basicThermo::forcedMaxRootCells() const
+{
+    const fvMesh& mesh = p_.mesh();
+
+    return tmp<volScalarField>
+    (
+        new volScalarField
+        (
+            IOobject
+            (
+                phasePropertyName("forcedMaxRootCells"),
+                mesh.time().timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh,
+            dimensionedScalar("zero", dimless, 0.0)
+        )
+    );
+}
+
+
+Foam::label Foam::basicThermo::nForcedMaxRootCells() const
+{
+    return 0;
+}
+
+
 // ************************************************************************* //

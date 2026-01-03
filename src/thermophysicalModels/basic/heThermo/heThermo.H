@@ -37,10 +37,75 @@ SourceFiles
 
 #include "basicMixture.H"
 
+#include <type_traits>
+#include <utility>
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
+
+namespace detail
+{
+    // Detect if a Thermo/EoS type supports hasMultipleZRoots(p,T)
+    template<class ThermoType>
+    class HasMultipleZRoots
+    {
+        template<class T>
+        static auto test(int) -> decltype
+        (
+            std::declval<const T>().hasMultipleZRoots(scalar(0), scalar(0)),
+            std::true_type{}
+        );
+
+        template<class>
+        static std::false_type test(...);
+
+    public:
+        static constexpr bool value = decltype(test<ThermoType>(0))::value;
+    };
+
+    template<class ThermoType>
+    inline bool hasMultipleZRoots
+    (
+        const ThermoType& thermo,
+        const scalar p,
+        const scalar T,
+        std::true_type
+    )
+    {
+        return thermo.hasMultipleZRoots(p, T);
+    }
+
+    template<class ThermoType>
+    inline bool hasMultipleZRoots
+    (
+        const ThermoType&,
+        const scalar,
+        const scalar,
+        std::false_type
+    )
+    {
+        return false;
+    }
+
+    template<class ThermoType>
+    inline bool hasMultipleZRoots
+    (
+        const ThermoType& thermo,
+        const scalar p,
+        const scalar T
+    )
+    {
+        return hasMultipleZRoots
+        (
+            thermo,
+            p,
+            T,
+            typename std::integral_constant<bool, HasMultipleZRoots<ThermoType>::value>::type{}
+        );
+    }
+} // End namespace detail
 
 /*---------------------------------------------------------------------------*\
                          Class heThermo Declaration
@@ -338,6 +403,14 @@ public:
 
         //- Read thermophysical properties dictionary
         virtual bool read();
+
+        // Diagnostics (real-gas cubic EOS)
+
+            //- See basicThermo::forcedMaxRootCells()
+            virtual tmp<volScalarField> forcedMaxRootCells() const;
+
+            //- See basicThermo::nForcedMaxRootCells()
+            virtual label nForcedMaxRootCells() const;
 
 
         //

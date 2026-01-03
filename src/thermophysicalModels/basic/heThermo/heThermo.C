@@ -26,6 +26,7 @@ License
 #include "heThermo.H"
 #include "gradientEnergyFvPatchScalarField.H"
 #include "mixedEnergyFvPatchScalarField.H"
+#include "PstreamReduceOps.H"
 
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
@@ -1053,6 +1054,103 @@ bool Foam::heThermo<BasicThermo, MixtureType>::read()
     {
         return false;
     }
+}
+
+
+template<class BasicThermo, class MixtureType>
+Foam::tmp<Foam::volScalarField>
+Foam::heThermo<BasicThermo, MixtureType>::forcedMaxRootCells() const
+{
+    const fvMesh& mesh = this->T_.mesh();
+
+    tmp<volScalarField> tFlag
+    (
+        new volScalarField
+        (
+            IOobject
+            (
+                BasicThermo::phasePropertyName("forcedMaxRootCells"),
+                mesh.time().timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh,
+            dimensionedScalar("zero", dimless, 0.0)
+        )
+    );
+
+    volScalarField& flag = tFlag.ref();
+    scalarField& flagCells = flag.primitiveFieldRef();
+
+    const scalarField& pCells = this->p_;
+    const scalarField& TCells = this->T_;
+
+    forAll(flagCells, celli)
+    {
+        flagCells[celli] =
+            detail::hasMultipleZRoots
+            (
+                this->cellMixture(celli),
+                pCells[celli],
+                TCells[celli]
+            )
+          ? 1.0
+          : 0.0;
+    }
+
+    volScalarField::Boundary& flagBf = flag.boundaryFieldRef();
+
+    forAll(flagBf, patchi)
+    {
+        scalarField& fp = flagBf[patchi];
+        const fvPatchScalarField& pp = this->p_.boundaryField()[patchi];
+        const fvPatchScalarField& Tp = this->T_.boundaryField()[patchi];
+
+        forAll(fp, facei)
+        {
+            fp[facei] =
+                detail::hasMultipleZRoots
+                (
+                    this->patchFaceMixture(patchi, facei),
+                    pp[facei],
+                    Tp[facei]
+                )
+              ? 1.0
+              : 0.0;
+        }
+    }
+
+    return tFlag;
+}
+
+
+template<class BasicThermo, class MixtureType>
+Foam::label Foam::heThermo<BasicThermo, MixtureType>::nForcedMaxRootCells() const
+{
+    const scalarField& pCells = this->p_;
+    const scalarField& TCells = this->T_;
+
+    label nLocal = 0;
+
+    forAll(pCells, celli)
+    {
+        if
+        (
+            detail::hasMultipleZRoots
+            (
+                this->cellMixture(celli),
+                pCells[celli],
+                TCells[celli]
+            )
+        )
+        {
+            ++nLocal;
+        }
+    }
+
+    return returnReduce(nLocal, sumOp<label>());
 }
 
 // 

@@ -37,6 +37,21 @@ volScalarField rho
     thermo.rho()
 );
 
+// Flag cells where cubic EOS has multiple Z-roots and max-root is forced
+volScalarField forcedMaxRootCells
+(
+    IOobject
+    (
+        "forcedMaxRootCells",
+        runTime.timeName(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("zero", dimless, 0.0)
+);
+
 // Generate new field to validate Transport model - Nam April 6th 2020 
 // generate dynamic viscosity field "mu" [kg/ms] 
 
