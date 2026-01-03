@@ -25,6 +25,7 @@ License
 
 #include "PRchungKineticMixture.H"
 #include "thermodynamicConstants.H"
+#include "polyBoundaryMesh.H"
 
 using namespace Foam::constant::thermodynamic;
 
@@ -197,6 +198,22 @@ Foam::PRchungKineticMixture<ThermoType>::PRchungKineticMixture
 
     correctMassFractions();
 
+    const fvMesh& mesh = Y_[0].mesh();
+    const label nCells = mesh.nCells();
+    cellLastZ_.setSize(nCells, 1.0);
+    cellLastZValid_.setSize(nCells, false);
+
+    const polyBoundaryMesh& pbMesh = mesh.boundary();
+    const label nPatches = pbMesh.size();
+    patchLastZ_.setSize(nPatches);
+    patchLastZValid_.setSize(nPatches);
+    forAll(patchLastZ_, patchi)
+    {
+        const label nFaces = pbMesh[patchi].size();
+        patchLastZ_[patchi].setSize(nFaces, 1.0);
+        patchLastZValid_[patchi].setSize(nFaces, false);
+    }
+
     //- Real gas precalculation
     forAll(BM_, i)
     { 
@@ -289,9 +306,10 @@ Foam::PRchungKineticMixture<ThermoType>::PRchungKineticMixture
         MM0_[i]        = nMM0;
         MIUIM0_[i]     = nMIUIM0;
         KAPPAIM_[i]    = nKAPPAIM;
-       //- end of real gas precalculation
     }
 
+    mixture_.setMixingTables(BM_, COEF1_, COEF2_, COEF3_);
+    mixtureVol_.setMixingTables(BM_, COEF1_, COEF2_, COEF3_);
 
     // for Kinetic model
     List<scalar> nEPSILONijOVERKB(species_.size());
@@ -391,6 +409,22 @@ Foam::PRchungKineticMixture<ThermoType>::PRchungKineticMixture
 {
 
     correctMassFractions();
+
+    const fvMesh& localMesh = Y_[0].mesh();
+    const label nCells = localMesh.nCells();
+    cellLastZ_.setSize(nCells, 1.0);
+    cellLastZValid_.setSize(nCells, false);
+
+    const polyBoundaryMesh& pbMesh = localMesh.boundary();
+    const label nPatches = pbMesh.size();
+    patchLastZ_.setSize(nPatches);
+    patchLastZValid_.setSize(nPatches);
+    forAll(patchLastZ_, patchi)
+    {
+        const label nFaces = pbMesh[patchi].size();
+        patchLastZ_[patchi].setSize(nFaces, 1.0);
+        patchLastZValid_[patchi].setSize(nFaces, false);
+    }
 }
 
 
@@ -440,6 +474,8 @@ const ThermoType& Foam::PRchungKineticMixture<ThermoType>::cellMixture
 
     // Update coefficients for mixture in PR
     mixture_.updateEoS(bM, coef1, coef2, coef3); 
+
+    mixture_.setMixtureState(X, &cellLastZ_[celli], &cellLastZValid_[celli]);
 
     //- For mass diffusivity 
     scalar WmixCorrect = 0.0, sumXcorrected = 0.0;
@@ -514,6 +550,13 @@ const ThermoType& Foam::PRchungKineticMixture<ThermoType>::patchFaceMixture
 
     // Update coefficients for mixture in PR
     mixture_.updateEoS(bM, coef1, coef2, coef3); 
+
+    mixture_.setMixtureState
+    (
+        X,
+        &patchLastZ_[patchi][facei],
+        &patchLastZValid_[patchi][facei]
+    );
 
     //- For mass diffusivity 
     scalar WmixCorrect = 0.0, sumXcorrected = 0.0;

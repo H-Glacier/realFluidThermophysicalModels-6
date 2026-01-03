@@ -44,6 +44,8 @@ SourceFiles
 #define PengRobinson_H
 
 #include "autoPtr.H"
+#include "List.H"
+#include "scalarField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -103,7 +105,47 @@ protected:
         scalar coef1_;
         scalar coef2_;
         scalar coef3_;
-        
+
+        //- Pointers to mixing-rule data (non-owning, set by mixtures)
+        mutable const List<scalar>* mixingB_;
+        mutable const List<List<scalar>>* mixingCoef1_;
+        mutable const List<List<scalar>>* mixingCoef2_;
+        mutable const List<List<scalar>>* mixingCoef3_;
+
+        //- Mole-fraction snapshot for current evaluation
+        mutable scalarField mixtureX_;
+
+        //- Workspace for \sum_j x_j a_ij(T)
+        mutable scalarField aMixWork_;
+
+        //- Optional pointer to external storage of previous Z root
+        mutable scalar* lastZPtr_;
+        mutable bool* lastZValidPtr_;
+
+        //- Cached state (p, T, Z) to avoid repeated solves
+        mutable scalar cachedP_;
+        mutable scalar cachedT_;
+        mutable scalar cachedZ_;
+        mutable bool hasCachedZ_;
+
+        //- Flag indicating mixture data availability
+        mutable bool hasMixtureState_;
+
+        //- Solve cubic using stored mixture data and stability logic
+        inline scalar solveWithMixtureState(scalar p, scalar T) const;
+
+        //- Residual Gibbs (dimensionless) for a candidate root
+        inline scalar residualGibbsForRoot
+        (
+            scalar Z,
+            scalar A,
+            scalar B,
+            scalar p,
+            scalar T
+        ) const;
+
+        //- Populate list of real roots of the cubic
+        inline void cubicRoots(scalar A, scalar B, List<scalar>& roots) const;
 
 public:
 
@@ -163,29 +205,50 @@ public:
             //- Return entropy [J/(kg K)]
             inline scalar S(const scalar p, const scalar T) const;
 
-            //- Return compressibility rho/p [s^2/m^2]
-            inline scalar psi(scalar p, scalar T) const;
+              //- Return compressibility rho/p [s^2/m^2]
+              inline scalar psi(scalar p, scalar T) const;
 
-            //- Return compression factor []
-            inline scalar Z(scalar p, scalar T) const;
+              //- Return compression factor []
+              inline scalar Z(scalar p, scalar T) const;
 
-            //- Return (Cp - Cv) [J/(kg K]
-            inline scalar CpMCv(scalar p, scalar T) const;
+              //- Return (Cp - Cv) [J/(kg K]
+              inline scalar CpMCv(scalar p, scalar T) const;
+
+              //- Provide pointers to mixing-rule data (non-owning)
+              inline void setMixingTables
+              (
+                  const List<scalar>& bList,
+                  const List<List<scalar>>& coef1,
+                  const List<List<scalar>>& coef2,
+                  const List<List<scalar>>& coef3
+              ) const;
+
+              //- Inject mixture state for subsequent property evaluation
+          inline void setMixtureState
+              (
+              const UList<scalar>& X,
+                  scalar* lastZPtr,
+                  bool* lastZValidPtr
+              ) const;
+
+              //- Clear cached mixture state and previous root linkage
+              inline void clearMixtureState() const;
 
             //- Update coeffcients for mixture
-            void updateEoS
-            ( 
-                const scalar& b, 
-                const scalar& coef1, 
-                const scalar& coef2, 
-                const scalar& coef3
-            ) 
-            { 
-                b_ = b; 
-                coef1_ = coef1; 
-                coef2_ = coef2; 
-                coef3_ = coef3; 
-            } 
+              void updateEoS
+              (
+                  const scalar& b,
+                  const scalar& coef1,
+                  const scalar& coef2,
+                  const scalar& coef3
+              )
+              {
+                  b_ = b;
+                  coef1_ = coef1;
+                  coef2_ = coef2;
+                  coef3_ = coef3;
+                  hasCachedZ_ = false;
+              }
 
             // Functions to check parameters
             inline scalar bM() const;

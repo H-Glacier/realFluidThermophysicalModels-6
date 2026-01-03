@@ -90,6 +90,8 @@ Tutorials for generating thermodynamic and transport properties of a pure specie
 ## Notes:
 Should you find bugs or have suggestions on how to make the code better, please post on cfd-online using following thread: https://www.cfd-online.com/Forums/openfoam-community-contributions/241110-real-gas-model-implementation-thermophysicalmodels-library.html 
 
+- Since 2025-11 the PR/SRK equation-of-state implementations track cell-wise compressibility-factor roots, reuse the previous state as the continuation seed, and fall back to a Gibbs-energy comparison when multiple real roots exist. This eliminates abrupt phase-branch jumps for supercritical mixtures and aligns the solver with tangent-plane-stability expectations.
+
 ## Authors 
 This package was developed at Clean Combustion and Energy Research Lab., Dept. of Mech. Engineering, Ulsan National Institute of Science and Technology (UNIST), Korea (Prof. C.S. Yoo: https://csyoo.unist.ac.kr/). If you publish results that are obtained using this package, please cite our paper as follows:
 - D. N. Nguyen, K. S. Jung, J. W. Shim, C. S. Yoo, Real-fluid thermophysicalModels: An OpenFOAM-based library for reacting flow simulations at high pressure, Computer Physics Communications 273 (2022) 108264. https://doi.org/10.1016/j.cpc.2021.108264 

@@ -50,6 +50,20 @@ Foam::soaveRedlichKwong<Specie>::soaveRedlichKwong
 
     coef3_ = (0.42747*sqr(RR*this->Tc_)/this->Pc_)*
              sqr(0.48508 + 1.5517*this->omega_ - 0.15613*sqr(this->omega_))/this->Tc_; 
+
+      mixingB_ = nullptr;
+      mixingCoef1_ = nullptr;
+      mixingCoef2_ = nullptr;
+      mixingCoef3_ = nullptr;
+      mixtureX_.clear();
+      aMixWork_.clear();
+      lastZPtr_ = nullptr;
+      lastZValidPtr_ = nullptr;
+      cachedP_ = 0;
+      cachedT_ = 0;
+      cachedZ_ = 0;
+      hasCachedZ_ = false;
+      hasMixtureState_ = false;
 }
 
 

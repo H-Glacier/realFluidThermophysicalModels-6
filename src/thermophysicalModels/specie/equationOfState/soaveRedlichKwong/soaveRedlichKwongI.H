@@ -41,8 +41,21 @@ inline Foam::soaveRedlichKwong<Specie>::soaveRedlichKwong
     Specie(sp),
     b_(b_),
     coef1_(coef1_),
-    coef2_(coef2_),
-    coef3_(coef3_)
+      coef2_(coef2_),
+      coef3_(coef3_),
+      mixingB_(nullptr),
+      mixingCoef1_(nullptr),
+      mixingCoef2_(nullptr),
+      mixingCoef3_(nullptr),
+      mixtureX_(),
+      aMixWork_(),
+      lastZPtr_(nullptr),
+      lastZValidPtr_(nullptr),
+      cachedP_(0),
+      cachedT_(0),
+      cachedZ_(0),
+      hasCachedZ_(false),
+      hasMixtureState_(false)
 {}
 
 
@@ -58,8 +71,21 @@ inline Foam::soaveRedlichKwong<Specie>::soaveRedlichKwong
     Specie(name, srk),
     b_(srk.b_),
     coef1_(srk.coef1_),
-    coef2_(srk.coef2_),
-    coef3_(srk.coef3_)
+      coef2_(srk.coef2_),
+      coef3_(srk.coef3_),
+      mixingB_(srk.mixingB_),
+      mixingCoef1_(srk.mixingCoef1_),
+      mixingCoef2_(srk.mixingCoef2_),
+      mixingCoef3_(srk.mixingCoef3_),
+      mixtureX_(srk.mixtureX_),
+      aMixWork_(srk.aMixWork_),
+      lastZPtr_(nullptr),
+      lastZValidPtr_(nullptr),
+      cachedP_(srk.cachedP_),
+      cachedT_(srk.cachedT_),
+      cachedZ_(srk.cachedZ_),
+      hasCachedZ_(srk.hasCachedZ_),
+      hasMixtureState_(srk.hasMixtureState_)
 {}
 
 
@@ -188,6 +214,47 @@ inline Foam::scalar Foam::soaveRedlichKwong<Specie>::Z
     scalar T
 ) const
 {
+    if
+    (
+        hasMixtureState_
+     && mixingB_
+     && mixingCoef1_
+     && mixingCoef2_
+     && mixingCoef3_
+     && mixtureX_.size()
+    )
+    {
+        const scalar relTol = 1e-9;
+
+        if
+        (
+            hasCachedZ_
+         && mag(p - cachedP_) <= relTol*(1.0 + mag(p))
+         && mag(T - cachedT_) <= relTol*(1.0 + mag(T))
+        )
+        {
+            return cachedZ_;
+        }
+
+        const scalar root = solveWithMixtureState(p, T);
+
+        cachedP_ = p;
+        cachedT_ = T;
+        cachedZ_ = root;
+        hasCachedZ_ = true;
+
+        if (lastZPtr_)
+        {
+            *lastZPtr_ = root;
+            if (lastZValidPtr_)
+            {
+                *lastZValidPtr_ = true;
+            }
+        }
+
+        return root;
+    }
+
     const scalar aAlpha = coef1_ - coef2_*sqrt(T) + coef3_*T;
 
     const scalar A = aAlpha*p/sqr(RR*T);
@@ -245,6 +312,360 @@ inline Foam::scalar Foam::soaveRedlichKwong<Specie>::Z
     }
     
     return root;
+}
+
+
+template<class Specie>
+inline Foam::scalar Foam::soaveRedlichKwong<Specie>::solveWithMixtureState
+(
+    scalar p,
+    scalar T
+) const
+{
+    const scalar TSafe = max(T, SMALL);
+    const scalar sqrtT = sqrt(TSafe);
+    const scalar aAlpha = coef1_ - coef2_*sqrtT + coef3_*TSafe;
+
+    const scalar A = aAlpha*p/sqr(RR*TSafe);
+    const scalar B = b_*p/(RR*TSafe);
+
+    List<scalar> roots;
+    cubicRoots(A, B, roots);
+
+    if (!roots.size())
+    {
+        const scalar a2 = -1.0;
+        const scalar a1 = A - B - sqr(B);
+        const scalar a0 = -A*B;
+        const scalar Q = (3*a1 - a2*a2)/9.0;
+        const scalar Rl = (9*a2*a1 - 27*a0 - 2*a2*a2*a2)/54.0;
+        const scalar Q3 = Q*Q*Q;
+        const scalar D = Q3 + Rl*Rl;
+
+        if (D <= 0)
+        {
+            const scalar ratio = max(min(Rl/sqrt(-Q3), scalar(1)), scalar(-1));
+            const scalar th = ::acos(ratio);
+            const scalar qm = 2*sqrt(-Q);
+            const scalar r1 = qm*cos(th/3.0) - a2/3.0;
+            const scalar r2 =
+                qm*cos((th + 2*constant::mathematical::pi)/3.0) - a2/3.0;
+            const scalar r3 =
+                qm*cos((th + 4*constant::mathematical::pi)/3.0) - a2/3.0;
+
+            return max(r1, max(r2, r3));
+        }
+        else
+        {
+            const scalar D05 = sqrt(D);
+            scalar S = 0;
+
+            if (Rl + D05 < 0)
+            {
+                S = -pow(mag(Rl + D05), 1.0/3.0);
+            }
+            else
+            {
+                S = pow(Rl + D05, 1.0/3.0);
+            }
+            scalar Tl = 0;
+            if (D05 > Rl)
+            {
+                Tl = -pow(mag(Rl - D05), 1.0/3.0);
+            }
+            else
+            {
+                Tl = pow(Rl - D05, 1.0/3.0);
+            }
+
+            return S + Tl - a2/3.0;
+        }
+    }
+
+    if (roots.size() == 1)
+    {
+        return roots[0];
+    }
+
+    scalar selected = roots[roots.size()-1];
+
+    if (lastZPtr_ && lastZValidPtr_ && *lastZValidPtr_)
+    {
+        scalar minDiff = great;
+        forAll(roots, i)
+        {
+            const scalar diff = mag(roots[i] - *lastZPtr_);
+            if (diff < minDiff)
+            {
+                minDiff = diff;
+                selected = roots[i];
+            }
+        }
+
+        if (minDiff < 1e-4)
+        {
+            return selected;
+        }
+    }
+
+    scalar bestG = great;
+    bool found = false;
+
+    forAll(roots, i)
+    {
+        const scalar g = residualGibbsForRoot(roots[i], A, B, p, TSafe);
+
+        if (g < bestG)
+        {
+            bestG = g;
+            selected = roots[i];
+            found = true;
+        }
+    }
+
+    if (!found)
+    {
+        if (lastZPtr_ && lastZValidPtr_ && *lastZValidPtr_)
+        {
+            scalar minDiff = great;
+            forAll(roots, i)
+            {
+                const scalar diff = mag(roots[i] - *lastZPtr_);
+                if (diff < minDiff)
+                {
+                    minDiff = diff;
+                    selected = roots[i];
+                }
+            }
+        }
+        else
+        {
+            selected = roots[roots.size()-1];
+        }
+    }
+
+    return selected;
+}
+
+
+template<class Specie>
+inline void Foam::soaveRedlichKwong<Specie>::cubicRoots
+(
+    scalar A,
+    scalar B,
+    List<scalar>& roots
+) const
+{
+    roots.setSize(0);
+
+    const scalar a2 = -1.0;
+    const scalar a1 = A - B - sqr(B);
+    const scalar a0 = -A*B;
+
+    const scalar Q = (3*a1 - a2*a2)/9.0;
+    const scalar Rl = (9*a2*a1 - 27*a0 - 2*a2*a2*a2)/54.0;
+
+    const scalar Q3 = Q*Q*Q;
+    const scalar D = Q3 + Rl*Rl;
+
+    if (D <= rootVSmall && Q < -rootVSmall)
+    {
+        const scalar qm = 2*sqrt(-Q);
+        scalar ratio = Rl/sqrt(-Q3);
+        ratio = max(min(ratio, scalar(1)), scalar(-1));
+
+        const scalar th = ::acos(ratio);
+
+        const scalar r1 = qm*cos(th/3.0) - a2/3.0;
+        const scalar r2 =
+            qm*cos((th + 2*constant::mathematical::pi)/3.0) - a2/3.0;
+        const scalar r3 =
+            qm*cos((th + 4*constant::mathematical::pi)/3.0) - a2/3.0;
+
+        scalar rMin = min(r1, min(r2, r3));
+        scalar rMax = max(r1, max(r2, r3));
+        scalar rMid = r1 + r2 + r3 - rMin - rMax;
+
+        roots.setSize(3);
+        roots[0] = rMin;
+        roots[1] = rMid;
+        roots[2] = rMax;
+    }
+    else
+    {
+        const scalar D05 = sqrt(max(D, scalar(0)));
+        scalar S = 0;
+
+        if (Rl + D05 < 0)
+        {
+            S = -pow(mag(Rl + D05), 1.0/3.0);
+        }
+        else
+        {
+            S = pow(Rl + D05, 1.0/3.0);
+        }
+
+        scalar Tl = 0;
+        if (D05 > Rl)
+        {
+            Tl = -pow(mag(Rl - D05), 1.0/3.0);
+        }
+        else
+        {
+            Tl = pow(Rl - D05, 1.0/3.0);
+        }
+
+        roots.setSize(1);
+        roots[0] = S + Tl - a2/3.0;
+    }
+}
+
+
+template<class Specie>
+inline Foam::scalar Foam::soaveRedlichKwong<Specie>::residualGibbsForRoot
+(
+    scalar Z,
+    scalar A,
+    scalar B,
+    scalar p,
+    scalar T
+) const
+{
+    const scalar Bsafe = max(B, rootVSmall);
+    const scalar ZminusB = Z - Bsafe;
+    const scalar arg1 = Z + Bsafe;
+    const scalar arg2 = Z;
+
+    if (ZminusB <= SMALL || arg1 <= SMALL || arg2 <= SMALL)
+    {
+        return great;
+    }
+
+    if (!mixingB_ || !mixingCoef1_ || !mixingCoef2_ || !mixingCoef3_)
+    {
+        return great;
+    }
+
+    const label nSpec = mixtureX_.size();
+
+    if (!nSpec)
+    {
+        return great;
+    }
+
+    if (aMixWork_.size() != nSpec)
+    {
+        aMixWork_.setSize(nSpec, 0.0);
+    }
+
+    scalar bMix = 0;
+    for (label i=0; i<nSpec; ++i)
+    {
+        bMix += mixtureX_[i]*(*mixingB_)[i];
+    }
+    bMix = max(bMix, rootVSmall);
+
+    const scalar RT = RR*T;
+    const scalar aMix = max(A*sqr(RT)/max(p, rootVSmall), rootVSmall);
+    const scalar sqrtT = sqrt(T);
+
+    for (label i=0; i<nSpec; ++i)
+    {
+        scalar sumAij = 0.0;
+        for (label j=0; j<nSpec; ++j)
+        {
+            const scalar aij =
+                (*mixingCoef1_)[i][j]
+              - (*mixingCoef2_)[i][j]*sqrtT
+              + (*mixingCoef3_)[i][j]*T;
+
+            sumAij += mixtureX_[j]*aij;
+        }
+        aMixWork_[i] = sumAij;
+    }
+
+    const scalar logTerm = log(arg1/arg2);
+    const scalar logZminusB = log(ZminusB);
+
+    scalar g = 0.0;
+
+    for (label i=0; i<nSpec; ++i)
+    {
+        const scalar xi = max(mixtureX_[i], rootVSmall);
+        const scalar bi = (*mixingB_)[i];
+        const scalar sumAij = aMixWork_[i];
+
+        const scalar term1 = bi/bMix*(Z - 1.0) - logZminusB;
+        const scalar term2 = A/(Bsafe)*(2.0*sumAij/aMix - bi/bMix)*logTerm;
+
+        const scalar lnPhi = term1 - term2;
+
+        g += xi*lnPhi;
+    }
+
+    return g;
+}
+
+
+template<class Specie>
+inline void Foam::soaveRedlichKwong<Specie>::setMixingTables
+(
+    const List<scalar>& bList,
+    const List<List<scalar>>& coef1,
+    const List<List<scalar>>& coef2,
+    const List<List<scalar>>& coef3
+) const
+{
+    mixingB_ = &bList;
+    mixingCoef1_ = &coef1;
+    mixingCoef2_ = &coef2;
+    mixingCoef3_ = &coef3;
+}
+
+
+template<class Specie>
+inline void Foam::soaveRedlichKwong<Specie>::setMixtureState
+(
+    const UList<scalar>& X,
+    scalar* lastZPtr,
+    bool* lastZValidPtr
+) const
+{
+    mixtureX_.setSize(X.size());
+    scalar sumX = 0.0;
+    forAll(X, i)
+    {
+        mixtureX_[i] = max(X[i], rootVSmall);
+        sumX += mixtureX_[i];
+    }
+
+    if (sumX > rootVSmall)
+    {
+        mixtureX_ /= sumX;
+    }
+
+    if (aMixWork_.size() != mixtureX_.size())
+    {
+        aMixWork_.setSize(mixtureX_.size(), 0.0);
+    }
+
+    lastZPtr_ = lastZPtr;
+    lastZValidPtr_ = lastZValidPtr;
+
+    hasMixtureState_ = true;
+    hasCachedZ_ = false;
+}
+
+
+template<class Specie>
+inline void Foam::soaveRedlichKwong<Specie>::clearMixtureState() const
+{
+    mixtureX_.clear();
+    aMixWork_.clear();
+    lastZPtr_ = nullptr;
+    lastZValidPtr_ = nullptr;
+    hasMixtureState_ = false;
+    hasCachedZ_ = false;
 }
 
 
