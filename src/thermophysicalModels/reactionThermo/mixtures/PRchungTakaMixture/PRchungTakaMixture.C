@@ -524,6 +524,216 @@ const ThermoType& Foam::PRchungTakaMixture<ThermoType>::patchFaceMixture
 }
 
 
+template<class ThermoType>
+Foam::scalar Foam::PRchungTakaMixture<ThermoType>::TcMix(const label celli) const
+{
+    List<scalar> X(Y_.size());
+    scalar sumXb = 0.0;
+
+    forAll(X, i)
+    {
+        sumXb += Y_[i][celli]/ListW_[i];
+    }
+
+    if (sumXb == 0)
+    {
+        return 0;
+    }
+
+    forAll(X, i)
+    {
+        X[i] = max((Y_[i][celli]/ListW_[i])/sumXb, scalar(0));
+    }
+
+    scalar aM = 0.0;
+    scalar bM = 0.0;
+
+    forAll(BM_, i)
+    {
+        bM += X[i]*BM_[i];
+
+        forAll(BM_, j)
+        {
+            const scalar aij =
+                sqrt
+                (
+                    (0.45724*pow(RR*speciesData_[i].Tc(), 2)/speciesData_[i].Pc())
+                   *(0.45724*pow(RR*speciesData_[j].Tc(), 2)/speciesData_[j].Pc())
+                );
+
+            aM += X[i]*X[j]*aij;
+        }
+    }
+
+    if (bM <= 0 || aM <= 0)
+    {
+        return 0;
+    }
+
+    return aM*0.07780/(bM*0.45724*RR);
+}
+
+
+template<class ThermoType>
+Foam::scalar Foam::PRchungTakaMixture<ThermoType>::PcMix(const label celli) const
+{
+    List<scalar> X(Y_.size());
+    scalar sumXb = 0.0;
+
+    forAll(X, i)
+    {
+        sumXb += Y_[i][celli]/ListW_[i];
+    }
+
+    if (sumXb == 0)
+    {
+        return 0;
+    }
+
+    forAll(X, i)
+    {
+        X[i] = max((Y_[i][celli]/ListW_[i])/sumXb, scalar(0));
+    }
+
+    scalar aM = 0.0;
+    scalar bM = 0.0;
+
+    forAll(BM_, i)
+    {
+        bM += X[i]*BM_[i];
+
+        forAll(BM_, j)
+        {
+            const scalar aij =
+                sqrt
+                (
+                    (0.45724*pow(RR*speciesData_[i].Tc(), 2)/speciesData_[i].Pc())
+                   *(0.45724*pow(RR*speciesData_[j].Tc(), 2)/speciesData_[j].Pc())
+                );
+
+            aM += X[i]*X[j]*aij;
+        }
+    }
+
+    if (bM <= 0 || aM <= 0)
+    {
+        return 0;
+    }
+
+    return aM*sqr(0.07780)/(0.45724*sqr(bM));
+}
+
+
+template<class ThermoType>
+Foam::scalar Foam::PRchungTakaMixture<ThermoType>::TcMix
+(
+    const label patchi,
+    const label facei
+) const
+{
+    List<scalar> X(Y_.size());
+    scalar sumXb = 0.0;
+
+    forAll(X, i)
+    {
+        sumXb += Y_[i].boundaryField()[patchi][facei]/ListW_[i];
+    }
+
+    if (sumXb == 0)
+    {
+        return 0;
+    }
+
+    forAll(X, i)
+    {
+        X[i] =
+            max((Y_[i].boundaryField()[patchi][facei]/ListW_[i])/sumXb, scalar(0));
+    }
+
+    scalar aM = 0.0;
+    scalar bM = 0.0;
+
+    forAll(BM_, i)
+    {
+        bM += X[i]*BM_[i];
+
+        forAll(BM_, j)
+        {
+            const scalar aij =
+                sqrt
+                (
+                    (0.45724*pow(RR*speciesData_[i].Tc(), 2)/speciesData_[i].Pc())
+                   *(0.45724*pow(RR*speciesData_[j].Tc(), 2)/speciesData_[j].Pc())
+                );
+
+            aM += X[i]*X[j]*aij;
+        }
+    }
+
+    if (bM <= 0 || aM <= 0)
+    {
+        return 0;
+    }
+
+    return aM*0.07780/(bM*0.45724*RR);
+}
+
+
+template<class ThermoType>
+Foam::scalar Foam::PRchungTakaMixture<ThermoType>::PcMix
+(
+    const label patchi,
+    const label facei
+) const
+{
+    List<scalar> X(Y_.size());
+    scalar sumXb = 0.0;
+
+    forAll(X, i)
+    {
+        sumXb += Y_[i].boundaryField()[patchi][facei]/ListW_[i];
+    }
+
+    if (sumXb == 0)
+    {
+        return 0;
+    }
+
+    forAll(X, i)
+    {
+        X[i] =
+            max((Y_[i].boundaryField()[patchi][facei]/ListW_[i])/sumXb, scalar(0));
+    }
+
+    scalar aM = 0.0;
+    scalar bM = 0.0;
+
+    forAll(BM_, i)
+    {
+        bM += X[i]*BM_[i];
+
+        forAll(BM_, j)
+        {
+            const scalar aij =
+                sqrt
+                (
+                    (0.45724*pow(RR*speciesData_[i].Tc(), 2)/speciesData_[i].Pc())
+                   *(0.45724*pow(RR*speciesData_[j].Tc(), 2)/speciesData_[j].Pc())
+                );
+
+            aM += X[i]*X[j]*aij;
+        }
+    }
+
+    if (bM <= 0 || aM <= 0)
+    {
+        return 0;
+    }
+
+    return aM*sqr(0.07780)/(0.45724*sqr(bM));
+}
+
+
 
 template<class ThermoType>
 const ThermoType& Foam::PRchungTakaMixture<ThermoType>::cellVolMixture

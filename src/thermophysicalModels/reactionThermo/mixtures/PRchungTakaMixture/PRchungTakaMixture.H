@@ -123,6 +123,7 @@ protected:
         List<scalar> ListW_;
         //- For PR
         List<scalar> BM_;
+        List<List<scalar>> AM_;
         List<List<scalar>> COEF1_;
         List<List<scalar>> COEF2_;
         List<List<scalar>> COEF3_; 
@@ -194,6 +195,22 @@ public:
         (
             const scalar p,
             const scalar T,
+            const label patchi,
+            const label facei
+        ) const;
+
+        scalar TcMix(const label celli) const;
+
+        scalar PcMix(const label celli) const;
+
+        scalar TcMix
+        (
+            const label patchi,
+            const label facei
+        ) const;
+
+        scalar PcMix
+        (
             const label patchi,
             const label facei
         ) const;

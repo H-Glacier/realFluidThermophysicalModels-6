@@ -183,6 +183,22 @@ public:
             const label facei
         ) const;
 
+        scalar TcMix(const label celli) const;
+
+        scalar PcMix(const label celli) const;
+
+        scalar TcMix
+        (
+            const label patchi,
+            const label facei
+        ) const;
+
+        scalar PcMix
+        (
+            const label patchi,
+            const label facei
+        ) const;
+
         const ThermoType& cellVolMixture
         (
             const scalar p,

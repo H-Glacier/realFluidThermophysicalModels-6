@@ -189,6 +189,28 @@ public:
                 const scalar p,
                 const scalar T
             ) const = 0;
+
+        // Mixture critical properties evaluated from local composition
+
+            //- Mixture critical temperature for a cell [K]
+            virtual scalar TcMix(const label celli) const = 0;
+
+            //- Mixture critical pressure for a cell [same units as specie Pc]
+            virtual scalar PcMix(const label celli) const = 0;
+
+            //- Mixture critical temperature for a patch face [K]
+            virtual scalar TcMix
+            (
+                const label patchi,
+                const label facei
+            ) const = 0;
+
+            //- Mixture critical pressure for a patch face [same units as specie Pc]
+            virtual scalar PcMix
+            (
+                const label patchi,
+                const label facei
+            ) const = 0;
 };
 
 

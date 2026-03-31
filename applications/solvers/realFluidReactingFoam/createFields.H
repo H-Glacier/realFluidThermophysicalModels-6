@@ -47,6 +47,56 @@ volScalarField Wmix
     thermo.W()
 );
 
+//- Creates mixture critical temperature field [K]
+Info<< "Creating field mixture critical temperature - TcMix \n" << endl;
+volScalarField TcMix
+(
+    IOobject
+    (
+        "TcMix",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("TcMix", dimTemperature, 0.0)
+);
+
+//- Creates mixture critical pressure field [same units as specie Pc]
+Info<< "Creating field mixture critical pressure - PcMix \n" << endl;
+volScalarField PcMix
+(
+    IOobject
+    (
+        "PcMix",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("PcMix", dimPressure, 0.0)
+);
+
+forAll(TcMix, celli)
+{
+    TcMix[celli] = composition.TcMix(celli);
+    PcMix[celli] = composition.PcMix(celli);
+}
+
+forAll(TcMix.boundaryField(), patchi)
+{
+    fvPatchScalarField& TcMixp = TcMix.boundaryFieldRef()[patchi];
+    fvPatchScalarField& PcMixp = PcMix.boundaryFieldRef()[patchi];
+
+    forAll(TcMixp, facei)
+    {
+        TcMixp[facei] = composition.TcMix(patchi, facei);
+        PcMixp[facei] = composition.PcMix(patchi, facei);
+    }
+}
+
 
 //- Creates Dynamic viscosity field [kg/m.s] 
 Info<< "\nCreating field dynamic viscosity - mu\n" << endl;

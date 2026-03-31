@@ -188,30 +188,6 @@ public:
                 coef3_ = coef3; 
             } 
 
-            //- Update coefficients and derive critical properties for a mixture
-            void updateEoS
-            (
-                const scalar& b,
-                const scalar& coef1,
-                const scalar& coef2,
-                const scalar& coef3,
-                const scalar& aMix
-            )
-            {
-                static const scalar omegaA = 0.42747;
-                static const scalar omegaB = 0.08664;
-
-                b_ = max(b, scalar(1e-16));
-                coef1_ = coef1;
-                coef2_ = coef2;
-                coef3_ = coef3;
-
-                const scalar aMixLimited = max(aMix, scalar(1e-16));
-
-                this->Tc_ = aMixLimited*omegaB/(b_*omegaA*RR);
-                this->Pc_ = aMixLimited*sqr(omegaB)/(omegaA*sqr(b_));
-            }
-
             // Functions to check parameters
             inline scalar bM() const;
             inline scalar coef1() const;

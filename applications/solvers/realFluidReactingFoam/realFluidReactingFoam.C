@@ -126,6 +126,22 @@ int main(int argc, char *argv[])
         Cv = thermo.Cv();
         kappa = thermo.kappa();
         Wmix = thermo.W();
+        forAll(TcMix, celli)
+        {
+            TcMix[celli] = composition.TcMix(celli);
+            PcMix[celli] = composition.PcMix(celli);
+        }
+        forAll(TcMix.boundaryField(), patchi)
+        {
+            fvPatchScalarField& TcMixPatch = TcMix.boundaryFieldRef()[patchi];
+            fvPatchScalarField& PcMixPatch = PcMix.boundaryFieldRef()[patchi];
+
+            forAll(TcMixPatch, facei)
+            {
+                TcMixPatch[facei] = composition.TcMix(patchi, facei);
+                PcMixPatch[facei] = composition.PcMix(patchi, facei);
+            }
+        }
         HE = thermo.he();
         forAll(Dimix, i)
         {   

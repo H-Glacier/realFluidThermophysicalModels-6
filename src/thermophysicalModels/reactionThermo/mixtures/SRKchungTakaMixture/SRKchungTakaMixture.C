@@ -79,7 +79,6 @@ void Foam::SRKchungTakaMixture<ThermoType>::calculateRealGas
 (
     List<scalar> X, 
     scalar& bM, 
-    scalar& aM,
     scalar& coef1, 
     scalar& coef2,
     scalar& coef3,
@@ -107,7 +106,6 @@ void Foam::SRKchungTakaMixture<ThermoType>::calculateRealGas
         forAll(COEF1_, j)
         {
             //- For SRK
-            aM         = aM + (X[i]*X[j])*AM_[i][j];
             coef1      = coef1 + (X[i]*X[j])*COEF1_[i][j];
             coef2      = coef2 + (X[i]*X[j])*COEF2_[i][j];
             coef3      = coef3 + (X[i]*X[j])*COEF3_[i][j];
@@ -379,17 +377,17 @@ const ThermoType& Foam::SRKchungTakaMixture<ThermoType>::cellMixture
     }
 
     //- Using calculateRealGas function
-    scalar bM = 0, aM = 0, coef1 = 0, coef2 = 0, coef3 = 0;
+    scalar bM = 0, coef1 = 0, coef2 = 0, coef3 = 0;
     scalar sigmaM = 0, epsilonkM =0, VcM = 0, TcM = 0, omegaM = 0, MM = 0, miuiM = 0, kappaiM = 0;
 
     calculateRealGas
     (
-        X, bM, aM, coef1, coef2, coef3,
+        X, bM, coef1, coef2, coef3,
         sigmaM, epsilonkM, MM, VcM, TcM, omegaM, miuiM, kappaiM
     );
 
     // Update coefficients for mixture in SRK
-    mixture_.updateEoS(bM, coef1, coef2, coef3, aM); 
+    mixture_.updateEoS(bM, coef1, coef2, coef3); 
 
     //- For mass diffusivity 
     scalar WmixCorrect = 0.0, sumXcorrected = 0.0;
@@ -474,17 +472,17 @@ const ThermoType& Foam::SRKchungTakaMixture<ThermoType>::patchFaceMixture
     }
 
     //- Using calculateRealGas function
-    scalar bM = 0, aM = 0, coef1 = 0, coef2 = 0, coef3 = 0;
+    scalar bM = 0, coef1 = 0, coef2 = 0, coef3 = 0;
     scalar sigmaM = 0, epsilonkM =0, VcM = 0, TcM = 0, omegaM = 0, MM = 0, miuiM = 0, kappaiM = 0;
 
     calculateRealGas
     (
-        X, bM, aM, coef1, coef2, coef3,
+        X, bM, coef1, coef2, coef3,
         sigmaM, epsilonkM, MM, VcM, TcM, omegaM, miuiM, kappaiM
     );
 
     // Update coefficients for mixture in SRK
-    mixture_.updateEoS(bM, coef1, coef2, coef3, aM); 
+    mixture_.updateEoS(bM, coef1, coef2, coef3); 
 
     //- For mass diffusivity 
     scalar WmixCorrect = 0.0, sumXcorrected = 0.0;
@@ -532,6 +530,210 @@ const ThermoType& Foam::SRKchungTakaMixture<ThermoType>::patchFaceMixture
     return mixture_;
 }
 
+
+
+template<class ThermoType>
+Foam::scalar Foam::SRKchungTakaMixture<ThermoType>::TcMix(const label celli) const
+{
+    static const scalar omegaA = 0.42747;
+    static const scalar omegaB = 0.08664;
+
+    List<scalar> X(Y_.size());
+    scalar sumXb = 0.0;
+
+    forAll(X, i)
+    {
+        sumXb += Y_[i][celli]/ListW_[i];
+    }
+
+    if (sumXb == 0)
+    {
+        sumXb = 1e-30;
+    }
+
+    forAll(X, i)
+    {
+        X[i] = (Y_[i][celli]/ListW_[i])/sumXb;
+
+        if (X[i] <= 0)
+        {
+            X[i] = 0;
+        }
+    }
+
+    scalar aM = 0.0;
+    scalar bM = 0.0;
+
+    forAll(X, i)
+    {
+        bM += X[i]*BM_[i];
+
+        forAll(X, j)
+        {
+            aM += X[i]*X[j]*AM_[i][j];
+        }
+    }
+
+    bM = max(bM, scalar(1e-16));
+    aM = max(aM, scalar(1e-16));
+
+    return aM*omegaB/(bM*omegaA*RR);
+}
+
+
+template<class ThermoType>
+Foam::scalar Foam::SRKchungTakaMixture<ThermoType>::PcMix(const label celli) const
+{
+    static const scalar omegaA = 0.42747;
+    static const scalar omegaB = 0.08664;
+
+    List<scalar> X(Y_.size());
+    scalar sumXb = 0.0;
+
+    forAll(X, i)
+    {
+        sumXb += Y_[i][celli]/ListW_[i];
+    }
+
+    if (sumXb == 0)
+    {
+        sumXb = 1e-30;
+    }
+
+    forAll(X, i)
+    {
+        X[i] = (Y_[i][celli]/ListW_[i])/sumXb;
+
+        if (X[i] <= 0)
+        {
+            X[i] = 0;
+        }
+    }
+
+    scalar aM = 0.0;
+    scalar bM = 0.0;
+
+    forAll(X, i)
+    {
+        bM += X[i]*BM_[i];
+
+        forAll(X, j)
+        {
+            aM += X[i]*X[j]*AM_[i][j];
+        }
+    }
+
+    bM = max(bM, scalar(1e-16));
+    aM = max(aM, scalar(1e-16));
+
+    return aM*sqr(omegaB)/(omegaA*sqr(bM));
+}
+
+
+template<class ThermoType>
+Foam::scalar Foam::SRKchungTakaMixture<ThermoType>::TcMix
+(
+    const label patchi,
+    const label facei
+) const
+{
+    static const scalar omegaA = 0.42747;
+    static const scalar omegaB = 0.08664;
+
+    List<scalar> X(Y_.size());
+    scalar sumXb = 0.0;
+
+    forAll(X, i)
+    {
+        sumXb += Y_[i].boundaryField()[patchi][facei]/ListW_[i];
+    }
+
+    if (sumXb == 0)
+    {
+        sumXb = 1e-30;
+    }
+
+    forAll(X, i)
+    {
+        X[i] = (Y_[i].boundaryField()[patchi][facei]/ListW_[i])/sumXb;
+
+        if (X[i] <= 0)
+        {
+            X[i] = 0;
+        }
+    }
+
+    scalar aM = 0.0;
+    scalar bM = 0.0;
+
+    forAll(X, i)
+    {
+        bM += X[i]*BM_[i];
+
+        forAll(X, j)
+        {
+            aM += X[i]*X[j]*AM_[i][j];
+        }
+    }
+
+    bM = max(bM, scalar(1e-16));
+    aM = max(aM, scalar(1e-16));
+
+    return aM*omegaB/(bM*omegaA*RR);
+}
+
+
+template<class ThermoType>
+Foam::scalar Foam::SRKchungTakaMixture<ThermoType>::PcMix
+(
+    const label patchi,
+    const label facei
+) const
+{
+    static const scalar omegaA = 0.42747;
+    static const scalar omegaB = 0.08664;
+
+    List<scalar> X(Y_.size());
+    scalar sumXb = 0.0;
+
+    forAll(X, i)
+    {
+        sumXb += Y_[i].boundaryField()[patchi][facei]/ListW_[i];
+    }
+
+    if (sumXb == 0)
+    {
+        sumXb = 1e-30;
+    }
+
+    forAll(X, i)
+    {
+        X[i] = (Y_[i].boundaryField()[patchi][facei]/ListW_[i])/sumXb;
+
+        if (X[i] <= 0)
+        {
+            X[i] = 0;
+        }
+    }
+
+    scalar aM = 0.0;
+    scalar bM = 0.0;
+
+    forAll(X, i)
+    {
+        bM += X[i]*BM_[i];
+
+        forAll(X, j)
+        {
+            aM += X[i]*X[j]*AM_[i][j];
+        }
+    }
+
+    bM = max(bM, scalar(1e-16));
+    aM = max(aM, scalar(1e-16));
+
+    return aM*sqr(omegaB)/(omegaA*sqr(bM));
+}
 
 
 template<class ThermoType>
