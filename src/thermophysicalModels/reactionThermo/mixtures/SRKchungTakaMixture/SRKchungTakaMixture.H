@@ -91,7 +91,6 @@ class SRKchungTakaMixture
         (
 	    List<scalar> X,
 	    scalar& bM,
-	    scalar& aM,
 	    scalar& coef1,
 	    scalar& coef2,
 	    scalar& coef3,
