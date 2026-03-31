@@ -91,6 +91,7 @@ class SRKchungTakaMixture
         (
 	    List<scalar> X,
 	    scalar& bM,
+	    scalar& aM,
 	    scalar& coef1,
 	    scalar& coef2,
 	    scalar& coef3,
@@ -123,6 +124,7 @@ protected:
         List<scalar> ListW_;
         //- For SRK
         List<scalar> BM_;
+        List<List<scalar>> AM_;
         List<List<scalar>> COEF1_;
         List<List<scalar>> COEF2_;
         List<List<scalar>> COEF3_; 

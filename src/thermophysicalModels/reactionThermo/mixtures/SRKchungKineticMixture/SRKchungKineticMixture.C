@@ -79,6 +79,7 @@ void Foam::SRKchungKineticMixture<ThermoType>::calculateRealGas
 (
     List<scalar> X, 
     scalar& bM, 
+    scalar& aM,
     scalar& coef1, 
     scalar& coef2,
     scalar& coef3,
@@ -106,6 +107,7 @@ void Foam::SRKchungKineticMixture<ThermoType>::calculateRealGas
         forAll(COEF1_, j)
         {
             //- For SRK
+            aM         = aM + (X[i]*X[j])*AM_[i][j];
             coef1      = coef1 + (X[i]*X[j])*COEF1_[i][j];
             coef2      = coef2 + (X[i]*X[j])*COEF2_[i][j];
             coef3      = coef3 + (X[i]*X[j])*COEF3_[i][j];
@@ -163,6 +165,7 @@ Foam::SRKchungKineticMixture<ThermoType>::SRKchungKineticMixture
     ListW_(species_.size()),
     //- For SRK
     BM_(species_.size()),
+    AM_(species_.size()),
     COEF1_(species_.size()),
     COEF2_(species_.size()),
     COEF3_(species_.size()),
@@ -204,6 +207,7 @@ Foam::SRKchungKineticMixture<ThermoType>::SRKchungKineticMixture
         BM_[i]     = 0.08664*RR*speciesData_[i].Tc()/speciesData_[i].Pc();
     }
 
+    List<scalar> nAM(species_.size());
     List<scalar> nCOEF1(species_.size());
     List<scalar> nCOEF2(species_.size());
     List<scalar> nCOEF3(species_.size());
@@ -220,15 +224,20 @@ Foam::SRKchungKineticMixture<ThermoType>::SRKchungKineticMixture
         forAll(nCOEF1, j)
         {
             //- For SRK
+            nAM[j] =
+                sqrt
+                (
+                    (0.42747*pow(RR*speciesData_[i].Tc(), 2)/speciesData_[i].Pc())
+                   *(0.42747*pow(RR*speciesData_[j].Tc(), 2)/speciesData_[j].Pc())
+                );
+
             nCOEF1[j] = 
-                sqrt((0.42747*pow(RR*speciesData_[i].Tc(), 2)/speciesData_[i].Pc())
-                    *(0.42747*pow(RR*speciesData_[j].Tc(), 2)/speciesData_[j].Pc()))
+                nAM[j]
                *(1+(0.48508+1.5517*speciesData_[i].omega()-0.15613*pow(speciesData_[i].omega(), 2)))
                *(1+(0.48508+1.5517*speciesData_[j].omega()-0.15613*pow(speciesData_[j].omega(), 2)));
 
             nCOEF2[j] = 
-                sqrt((0.42747*pow(RR*speciesData_[i].Tc(), 2)/speciesData_[i].Pc())
-                    *(0.42747*pow(RR*speciesData_[j].Tc(), 2)/speciesData_[j].Pc()))
+                nAM[j]
                *(
                   (
                     (1.0+(0.48508+1.5517*speciesData_[j].omega()-0.15613*pow(speciesData_[j].omega(), 2)))
@@ -243,8 +252,7 @@ Foam::SRKchungKineticMixture<ThermoType>::SRKchungKineticMixture
                );
 
             nCOEF3[j] = 
-                sqrt((0.42747*pow(RR*speciesData_[i].Tc(), 2)/speciesData_[i].Pc())
-                    *(0.42747*pow(RR*speciesData_[j].Tc(), 2)/speciesData_[j].Pc())) 
+                nAM[j] 
                *(0.48508+1.5517*speciesData_[i].omega()-0.15613*pow(speciesData_[i].omega(), 2))
                *(0.48508+1.5517*speciesData_[j].omega()-0.15613*pow(speciesData_[j].omega(), 2))
                /sqrt(speciesData_[i].Tc()*speciesData_[j].Tc());
@@ -279,6 +287,7 @@ Foam::SRKchungKineticMixture<ThermoType>::SRKchungKineticMixture
                 pow(speciesData_[i].kappai()*speciesData_[j].kappai(), 1.0/2);
         }
 
+        AM_[i] = nAM;
         COEF1_[i] = nCOEF1;
         COEF2_[i] = nCOEF2;
         COEF3_[i] = nCOEF3;
@@ -429,17 +438,17 @@ const ThermoType& Foam::SRKchungKineticMixture<ThermoType>::cellMixture
     }
 
     //- Using calculateRealGas function
-    scalar bM = 0, coef1 = 0, coef2 = 0, coef3 = 0;
+    scalar bM = 0, aM = 0, coef1 = 0, coef2 = 0, coef3 = 0;
     scalar sigmaM = 0, epsilonkM =0, VcM = 0, TcM = 0, omegaM = 0, MM = 0, miuiM = 0, kappaiM = 0;
 
     calculateRealGas
     (
-        X, bM, coef1, coef2, coef3,
+        X, bM, aM, coef1, coef2, coef3,
         sigmaM, epsilonkM, MM, VcM, TcM, omegaM, miuiM, kappaiM
     );
 
     // Update coefficients for mixture in SRK
-    mixture_.updateEoS(bM, coef1, coef2, coef3); 
+    mixture_.updateEoS(bM, coef1, coef2, coef3, aM); 
 
     //- For mass diffusivity 
     scalar WmixCorrect = 0.0, sumXcorrected = 0.0;
@@ -503,17 +512,17 @@ const ThermoType& Foam::SRKchungKineticMixture<ThermoType>::patchFaceMixture
     }
 
     //- Using calculateRealGas function
-    scalar bM = 0, coef1 = 0, coef2 = 0, coef3 = 0;
+    scalar bM = 0, aM = 0, coef1 = 0, coef2 = 0, coef3 = 0;
     scalar sigmaM = 0, epsilonkM =0, VcM = 0, TcM = 0, omegaM = 0, MM = 0, miuiM = 0, kappaiM = 0;
 
     calculateRealGas
     (
-        X, bM, coef1, coef2, coef3,
+        X, bM, aM, coef1, coef2, coef3,
         sigmaM, epsilonkM, MM, VcM, TcM, omegaM, miuiM, kappaiM
     );
 
     // Update coefficients for mixture in SRK
-    mixture_.updateEoS(bM, coef1, coef2, coef3); 
+    mixture_.updateEoS(bM, coef1, coef2, coef3, aM); 
 
     //- For mass diffusivity 
     scalar WmixCorrect = 0.0, sumXcorrected = 0.0;
